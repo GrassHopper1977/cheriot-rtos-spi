@@ -1,30 +1,18 @@
-Hello World example
-===================
+General IO Example
+==================
 
-This example shows a simple hello-world firmware image, with a single thread and a single compartment.
+This example shows how to access and use the GPIO and RGB LED via the MMIO_CAPABILITY() macro. The RGB LED slowly changes colours, the user LEDs wil play a simple scrolling pattern and using the Joystick will create an output on the UART saying which direction is being selected and if the button is pressed.
 This uses the debug facilities to write a message directly to the UART.
 
 The [`xmake.lua`](xmake.lua) file contains the build instructions for this example.
-This file contains two libraries (one providing `memcpy`, the other `clz`) that can be used by multiple compartments, and a single compartment (beyond the RTOS components).
 
-The code for the compartment is all in [`hello.cc`](hello.cc).
-This file first imports the debug facilities:
+When looking to access the IO for the Sonata Board you need to do 2 things:
+1. Look in the "devices" section of ['../../sdk/boards/sonata.json'](../../sdk/boards/sonata.json) to get the list of devices that can be accessed.
+2. Look in ['../../sdk/include/platform/sunburst'](../../sdk/include/platform/sunburst) to find the header files for those devices. Each header file has a name beginning "platform-".
+Note: I agree that it is a little confusing that the board is called "sonata" and the platform is called "sunburst". I'm sure there's a historical reason for it.
 
-```c++
-using Debug = ConditionalDebug<true, "Hello world compartment">;
-```
+In this example we control:
+* The RGB LED using the "SonataRgbLedController" class, defined in ['../../sdk/include/platform/sunburst/platform-rgbctrl.hh'](../../sdk/include/platform/sunburst/platform-rgbctrl.hh) pointing to "rgbled" as defined in ['../../sdk/boards/sonata.json'](../../sdk/boards/sonata.json).
+* The Joystick using the "SonataGPIO" class, defined in ['../../sdk/include/platform/sunburst/platform-gpio.hh'](../../sdk/include/platform/sunburst/platform-gpio.hh) pointing to "gpio" as defined in ['../../sdk/boards/sonata.json'](../../sdk/boards/sonata.json).
 
-The `ConditionalDebug` template is intended to allow the first argument to be an expression that may include macro definitions so that debugging can be selectively enabled for subsets of a program at build time.
-For now, we're just enabling it unconditionally so that we can use its `log` method to write to the UART.
-
-This will, indirectly, use the `MMIO_CAPABILITY` macro, which imports a memory-mapped I/O device, the target platform's default UART.
-Our example compartment will be granted direct access to the UART, which it can then use from its entry point function, `say_hello`.
-
-Note that the definition of this function uses a macro to indicate the compartment that it is in (`"hello"`).
-This macro is normally used on function definitions, rather than declarations, and allows the compiler to either export the function when it is defined or insert cross-compartment calls when it is used when compiling code for another compartment.
-
-We also include the SDK header `fail-simulator-on-error.h`. This defines a
-simple [compartment error handler](../docs/ErrorHandling.md) that reports any
-unexpected errors and ends the simulation with exit code 1 (FAILURE). This is
-necessary because the default behaviour would silently exit the thread,
-potentially hiding errors.
+We've also created a simple ['gpio_helper.hh'](gpio_helper.hh) file to assist with somethings. In this case we have overidden the "&" operator so that we can do a Boolean compare of the SonataJoystick values that are returned.
